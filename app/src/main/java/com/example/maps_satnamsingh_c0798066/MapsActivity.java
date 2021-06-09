@@ -322,7 +322,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         homeLocation = new LatLng(location.getLatitude(),location.getLongitude());
         if (isFirstTime){
             isFirstTime = !isFirstTime;
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(homeLocation, 11));
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(homeLocation, 18));
         }
     }
 
