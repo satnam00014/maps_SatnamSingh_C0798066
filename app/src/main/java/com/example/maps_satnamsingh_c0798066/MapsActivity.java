@@ -49,6 +49,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private GoogleMap mMap;
     private LatLng homeLocation;
+    private Marker homeMarker;
     private Marker destMarker;
     private Polyline line;
     private int REQUEST_CODE = 20;
@@ -60,12 +61,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     Polygon shape;
     private boolean isRemovalLocation = false;
     private int removalPosition = -1;
+    private boolean isLineSelected = false;
     private ArrayList<Polyline> lines = new ArrayList<>();
     private PolygonMarker polygonMarkers[] = {new PolygonMarker("A"),
             new PolygonMarker("B"),
             new PolygonMarker("C"),
             new PolygonMarker("D")};
-
+    private ArrayList<Marker> lineMarkers = new ArrayList<>();
     private class PolygonMarker implements Comparable<PolygonMarker> {
         Marker marker;
         String name;
@@ -178,6 +180,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         lines.clear();
                         isRemovalLocation = true;
                         removalPosition = i;
+                        removeLineMarkers();
                         return;
                     }
                 }
@@ -185,8 +188,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             this.setPolygonMarker(latLng);
         });
         mMap.setOnPolylineClickListener(polyline -> {
-            Toast.makeText(this, "Distance is :  " + polyline.getTag().toString() + " Km", Toast.LENGTH_SHORT).show();
-
+            if (isLineSelected){
+                removeLineMarkers();
+            }else{
+                for (Polyline line: lines){
+                    String tag = line.getTag().toString()+" Km";
+                    List<LatLng> points = line.getPoints();
+                    LatLng mid = new LatLng((points.get(0).latitude+points.get(1).latitude)/2,(points.get(0).longitude+points.get(1).longitude)/2);
+                    Marker temp = mMap.addMarker(new MarkerOptions().position(mid).title(tag)
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                    temp.setTag(tag);
+                    lineMarkers.add(temp);
+                    Log.d("ONLINECLICK:",mid.latitude+","+mid.longitude);
+                }
+            }
+            Toast.makeText(getApplicationContext(),"Distance: "+polyline.getTag().toString()+" Km",Toast.LENGTH_SHORT).show();
+            isLineSelected = !isLineSelected;
         });
         mMap.setOnMarkerClickListener(marker -> {
             Toast.makeText(this, marker.getTag().toString(), Toast.LENGTH_LONG).show();
@@ -215,6 +232,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             for (Polyline line : lines)
                 line.remove();
             lines.clear();
+            removeLineMarkers();
         }
         polygonMarkers[markerCount].marker = mMap.addMarker(new MarkerOptions().position(latLng).title(polygonMarkers[markerCount].name)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ROSE)));
@@ -235,7 +253,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             polygonMarkers[i].marker.setDraggable(false);
             options.add(polygonMarkers[i].marker.getPosition());
             if (i < markerCount - 1) {
-                drawLine(polygonMarkers[i].marker, polygonMarkers[i + 1].marker);
+                drawLine(polygonMarkers[i].marker, polygonMarkers[i+1].marker);
             } else {
                 drawLine(polygonMarkers[i].marker, polygonMarkers[0].marker);
             }
@@ -289,6 +307,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         return distance[0] / 1000;
     }
 
+    private void removeLineMarkers(){
+        for (Marker marker: lineMarkers)
+            marker.remove();
+        lineMarkers.clear();
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -314,15 +338,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ) {
             return;
         }
+        if (homeMarker!=null)
+            homeMarker.remove();
         mMap.setMyLocationEnabled(true);
         LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
-        Marker temp = mMap.addMarker(new MarkerOptions().position(latLng).title("Current Location")
+        homeMarker = mMap.addMarker(new MarkerOptions().position(latLng).title("Current Location")
                 .icon(BitmapDescriptorFactory.fromBitmap(createCustomMarker())));
-        temp.setTag("Current Location");
+        homeMarker.setTag("Current Location");
         homeLocation = new LatLng(location.getLatitude(),location.getLongitude());
         if (isFirstTime){
             isFirstTime = !isFirstTime;
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(homeLocation, 18));
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(homeLocation, 16));
         }
     }
 
